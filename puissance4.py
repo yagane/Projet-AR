@@ -16,7 +16,7 @@ class Puissance4(Tk):
 
     def callback(self, event):
         print ("Clic")
-        self.frame.focus_set()
+        #self.frame.focus_set()
         x = event.x
         x = int(x * self.height / self.width)
         self.play(x, 1, True)
@@ -27,20 +27,18 @@ class Puissance4(Tk):
         Tk.__init__(self)
         self.column = 7
         self.line = 6
-        self.width = 300
-        self.height = (float(self.line) / float(self.column)) * self.width
+        self.width = 700
+        self.height = 600
         self.player = 1
-        self.board = np.zeros((self.line, self.column))
-        self.frame = Frame(self, width=self.width, height=self.height)
-        self.canvas = Canvas(self, width=self.width, height=self.height)
+        self.reset()
         #Permet de resize les éléments quand on change la taille de la fenêtre
-        self.frame.pack()
+        #self.frame.pack()
         self.canvas.pack()
 
     def reset(self):
-        self.board = np.zeros(self.line, self.column)
-        self.frame = Frame(self, width=self.width, height=self.height)
-        self.canvas = Canvas(self, width=self.width, height=self.height)
+        self.board = np.zeros((self.line, self.column))
+        #self.frame = Frame(self, width=self.width, height=self.height)
+        self.canvas = Canvas(self, width=self.width, height=self.height, background='blue')
 
     def possibles_plays(self):
         plays = []
@@ -169,6 +167,16 @@ class Puissance4(Tk):
 
     def print_board(self):
 
+        #Création de la grille
+        self.geometry("700x600")
+        for i in range(6):  # nombre de lignes
+            self.canvas.create_line(100 * (i + 1), 0, 100 * (i + 1), self.height, width=5)
+        for i in range(7):  # nombre de colonnes
+            self.canvas.create_line(0, 100 * (i + 1), self.width, 100 * (i + 1), width=5)
+        self.canvas.pack()
+
+
+        #Ajoute les jetons dans la grille
         for i in range (self.line) :
             for j in range (self.column) :
                 if (self.board[i,j]==1) :
@@ -181,7 +189,8 @@ class Puissance4(Tk):
                     x1, y1 = self.convert_coordinates(i + 1, j)
                     self.canvas.create_oval(y0, self.height - x0, y1, self.height - x1, outline="gray", fill="yellow",
                                             width=2, tag="J2")
-        self.frame.update()
+        #self.frame.update()
+        self.canvas.update()
 
 
 
