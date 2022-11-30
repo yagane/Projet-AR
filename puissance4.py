@@ -6,24 +6,62 @@ Created on :
 
 from tkinter import *
 import numpy as np
+import math
+import random
+import matplotlib.pyplot as plt
 
 class Puissance4(Tk):
 
     def callback(self, event):
-        #self.frame.focus_set()
         x = event.x
         x = int(x * self.column / self.width)
         self.play(x)
-        if self.win:
-            self.restart()
 
+        if self.check_win(self.board) != -1:
+            self.restart()
+        else:
+            x = self.minmax(self.board,5,-math.inf,math.inf,True)[0]
+            self.play(x)
+
+            if self.check_win(self.board) != -1:
+                self.restart()
+
+    def IA_vs_rand(self):
+        if self.player == 1:
+            x = self.minmax(self.board, 5, -math.inf, math.inf, True)[0]
+            self.play(x)
+
+        if self.check_win(self.board) != -1:
+            self.restart()
+            self.loose += 1
+            print("Win: ", self.win, ", Loose: ", self.loose)
+            self.tab.append(-1)
+        else:
+            if self.player == 2:
+                x = self.minmax(self.board, 5, -math.inf, math.inf, True)[0]
+                self.play(x)
+
+                if self.check_win(self.board) != -1:
+                    self.restart()
+                    self.win += 1
+                    print("Win: " , self.win , ", Loose: " , self.loose)
+                    self.tab.append(1)
+
+        if len(self.tab) == 100:
+            t = np.linspace(0, 100, 100)
+            plt.plot(t,self.tab)
+            plt.show()
+        else:
+            self.IA_vs_rand()
 
     def motion(self, event):
         print("Mouse position: (%s %s)" % (event.x, event.y))
 
     def __init__(self):
         Tk.__init__(self)
-        self.win = False
+        self.tab = []
+        self.win = 0
+        self.loose = 0
         self.column = 7
         self.line = 6
         self.width = 700
@@ -37,24 +75,22 @@ class Puissance4(Tk):
         self.canvas.bind('<Button-1>', self.callback)
         self.canvas.pack()
 
-
     def reset(self):
         self.board = np.zeros((self.line, self.column))
         #self.frame = Frame(self, width=self.width, height=self.height)
         self.canvas = Canvas(self, width=self.width, height=self.height, background='blue')
 
     def restart(self):
-        self.win = False
         self.player = 1
         self.board = np.zeros((self.line, self.column))
         self.canvas.delete("all")
         self.print_board()
 
-    def possibles_plays(self):
+    def possibles_plays(self, board):
         plays = []
         for i in range(self.column):
             for j in range(self.line):
-                if self.board[self.line-j-1,i] == 0:
+                if board[self.line-j-1,i] == 0:
                     plays.append(self.line-j-1)
                     break
                 elif j == self.line-1:
@@ -63,14 +99,12 @@ class Puissance4(Tk):
         return plays
 
     def play(self, x):
-        print("Player ", self.player ," doit jouer")
-
-        if self.possibles_plays()[x] == -1:
+        if self.possibles_plays(self.board)[x] == -1:
             print("Ce coup n'est pas possible, rejouez !")
         else:
-            self.board[self.possibles_plays()[x], x] = self.player
+            self.board[self.possibles_plays(self.board)[x], x] = self.player
 
-            self.check_win(self.possibles_plays()[x] + 1, x)
+            self.check_win(self.board)
 
             self.print_board()
 
@@ -79,125 +113,129 @@ class Puissance4(Tk):
             else:
                 self.player = 1
 
-    def check_win(self, x, y):
+    def check_win(self, board):
 
-        if np.sum(self.board) == 63:
-            print("Egalite")
+        # Check horizontal locations for win
+        for i in range(self.column - 3):
+            for j in range(self.line):
+                piece = board[j][i]
+                if  board[j][i + 1] == piece and board[j][i + 2] == piece and board[j][i + 3] == piece and piece != 0:
+                    return piece
 
-        # On regarde si le joueur gagne en colonne
-        if self.line-x >= 4:
-            if self.board[x+1, y] == self.player and self.board[x+2, y] == self.player and self.board[x+3, y] == self.player:
-                print("player ", self.player ," win")
-                self.win = True
+        # Check vertical locations for win
+        for i in range(self.column):
+            for j in range(self.line - 3):
+                piece = board[j][i]
+                if board[j + 1][i] == piece and board[j + 2][i] == piece and board[j + 3][i] == piece and piece != 0:
+                    return piece
 
-        if self.line-x <= 3:
-            if self.board[x-1, y] == self.player and self.board[x-2, y] == self.player and self.board[x-3, y] == self.player:
-                print("player ", self.player ," win")
-                self.win = True
+        # Check positively sloped diaganols
+        for i in range(self.column - 3):
+            for j in range(self.line - 3):
+                piece = board[j][i]
+                if board[j + 1][i + 1] == piece and board[j + 2][i + 2] == piece and board[j + 3][i + 3] == piece and piece != 0:
+                    return piece
 
-        if self.line - x >= 3 and x != 0:
-            if self.board[x+1, y] == self.player and self.board[x+2, y] == self.player and self.board[x-1, y] == self.player:
-                print("player ", self.player ," win")
-                self.win = True
+        # Check negatively sloped diaganols
+        for i in range(self.column - 3):
+            for j in range(3, self.line):
+                piece = board[j][i]
+                if board[j - 1][i + 1] == piece and board[j - 2][i + 2] == piece and board[j - 3][i + 3] == piece and piece != 0:
+                    return piece
 
-        if self.line - x <= 4 and x != self.line-1:
-            if self.board[x-1, y] == self.player and self.board[x-2, y] == self.player and self.board[x+1, y] == self.player:
-                print("player ", self.player ," win")
-                self.win = True
-
-        #On regarde si le joueur gagne en ligne
-        if self.column-y >= 4:
-            if self.board[x, y+1] == self.player and self.board[x, y+2] == self.player and self.board[x, y+3] == self.player:
-                print("player ", self.player ," win")
-                self.win = True
-
-        if self.column-y <= 4:
-            if self.board[x, y-1] == self.player and self.board[x, y-2] == self.player and self.board[x, y-3] == self.player:
-                print("player ", self.player ," win")
-                self.win = True
-
-        if self.column-y >= 3 and y != 0:
-            if self.board[x, y+1] == self.player and self.board[x, y+2] == self.player and self.board[x, y-1] == self.player:
-                print("player ", self.player ," win")
-                self.win = True
-
-        if self.column-y <= 5 and y != self.column-1:
-            if self.board[x, y-1] == self.player and self.board[x, y-2] == self.player and self.board[x, y+1] == self.player:
-                print("player ", self.player ," win")
-                self.win = True
-
-        #On regarde si le joueur gagne en diagonale
-        if self.line-x >= 4 and self.column-y >= 4:
-            if self.board[x+1, y+1] == self.player and self.board[x+2, y+2] == self.player and self.board[x+3, y+3] == self.player:
-                print("player ", self.player ," win")
-                self.win = True
-
-        if self.line-x >= 3 and self.column-y >= 3 and x != 0 and y != 0:
-            if self.board[x+1, y+1] == self.player and self.board[x+2, y+2] == self.player and self.board[x-1, y-1] == self.player:
-                print("player ", self.player ," win")
-                self.win = True
-
-        if self.line-x >= 4 and self.column-y <= 4:
-            if self.board[x+1, y-1] == self.player and self.board[x+2, y-2] == self.player and self.board[x+3, y-3] == self.player:
-                print("player ", self.player ," win")
-                self.win = True
-
-        if self.line-x >= 3 and self.column-y <= 5 and x != 0 and y != self.column-1:
-            if self.board[x+1, y-1] == self.player and self.board[x+2, y-2] == self.player and self.board[x-1, y+1] == self.player:
-                print("player ", self.player ," win")
-                self.win = True
-
-        # On regarde si le joueur gagne en diagonale
-        if self.line-x <= 3 and self.column-y >= 4:
-            if self.board[x-1, y+1] == self.player and self.board[x-2, y+2] == self.player and self.board[x-3, y+3] == self.player:
-                print("player ", self.player ," win")
-                self.win = True
-
-        if self.line-x <= 4 and self.column-y >= 3 and x != self.line-1 and y != 0:
-            if self.board[x-1, y+1] == self.player and self.board[x-2, y+2] == self.player and self.board[x+1, y-1] == self.player:
-                print("player ", self.player ," win")
-                self.win = True
-
-        if self.line-x <= 3 and self.column-y <= 4:
-            if self.board[x-1, y-1] == self.player and self.board[x-2, y-2] == self.player and self.board[x-3, y-3] == self.player:
-                print("player ", self.player ," win")
-                self.win = True
-
-        if self.line-x <= 4 and self.column-y <= 5 and x != self.line - 1 and y != self.column - 1:
-            if self.board[x-1, y-1] == self.player and self.board[x-2, y-2] == self.player and self.board[x+1, y+1] == self.player:
-                print("player ", self.player ," win")
-                self.win = True
-
+        return -1
 
     def convert_coordinates(self, i, j):  # Converti les coordonnées dans le tableau en coordonnée sur la fenêtre
         return self.height - (i * self.height / self.line), j * self.width / self.column
 
-
     def print_board(self):
 
-        #Création de la grille
-        self.geometry("700x600")
-        for i in range(6):  # nombre de lignes
-            self.canvas.create_line(100 * (i + 1), 0, 100 * (i + 1), self.height, width=5)
-        for i in range(7):  # nombre de colonnes
-            self.canvas.create_line(0, 100 * (i + 1), self.width, 100 * (i + 1), width=5)
-        self.canvas.pack()
-
         #Ajoute les jetons dans la grille
-        for i in range (self.line) :
-            for j in range (self.column) :
-                if (self.board[i,j]==1) :
+        for i in range (self.line):
+            for j in range (self.column):
+                if self.board[i, j] == 0:
                     x0, y0 = self.convert_coordinates(i, j + 1)
                     x1, y1 = self.convert_coordinates(i + 1, j)
-                    self.canvas.create_oval(y0, self.height - x0, y1, self.height - x1, outline="gray", fill="red",
+                    self.canvas.create_oval(y0 - 5, self.height - x0 + 5, y1 + 5, self.height - x1 - 5, outline="gray", fill="white",
                                             width=2, tag="J1")
-                elif (self.board[i,j]==2) :
+                elif self.board[i, j] == 1:
                     x0, y0 = self.convert_coordinates(i, j + 1)
                     x1, y1 = self.convert_coordinates(i + 1, j)
-                    self.canvas.create_oval(y0, self.height - x0, y1, self.height - x1, outline="gray", fill="yellow",
+                    self.canvas.create_oval(y0 - 5, self.height - x0 + 5, y1 + 5, self.height - x1 - 5, outline="gray", fill="red",
+                                            width=2, tag="J1")
+                elif self.board[i, j] == 2:
+                    x0, y0 = self.convert_coordinates(i, j + 1)
+                    x1, y1 = self.convert_coordinates(i + 1, j)
+                    self.canvas.create_oval(y0 - 5, self.height - x0 + 5, y1 + 5, self.height - x1 - 5, outline="gray", fill="yellow",
                                             width=2, tag="J2")
         #self.frame.update()
         self.canvas.update()
+
+    def drop_piece(self, board, row, col, piece):
+        board[row][col] = piece
+
+    def minmax(self, board, depth, alpha, beta, flag_max):
+        possible_play = self.possibles_plays(board)
+
+        valid_col = []
+        for i in range(len(possible_play)):
+            if possible_play[i] != -1:
+                valid_col.append(i)
+
+        win = self.check_win(board)
+
+        if depth == 0 or win != -1:
+            if win == 2:
+                return (None, 100000000000000)
+            elif win == 1:
+                return (None, -10000000000000)
+            elif win == 0:
+                return (None, -1)
+            else:
+                return (None, 0)
+
+        if flag_max:
+            value = -math.inf
+            column = random.choice(valid_col)
+
+            for col in valid_col:
+                row = possible_play[col]
+                b_copy = self.board.copy()
+
+                self.drop_piece(b_copy, row, col, 2)
+                new_score = self.minmax(b_copy, depth-1, alpha, beta, False)[1]
+
+                if new_score > value:
+                    value = new_score
+                    column = col
+
+                alpha = max(alpha, value)
+
+                if alpha >= beta:
+                    break
+
+            return column, value
+
+        else:
+            value = math.inf
+            column = random.choice(valid_col)
+
+            for col in valid_col:
+                row = possible_play[col]
+                b_copy = self.board.copy()
+                self.drop_piece(b_copy, row, col, 1)
+                new_score = self.minmax(b_copy, depth-1,alpha, beta, True)[1]
+
+                if new_score < value:
+                    value = new_score
+                    column = col
+
+                beta = min(beta, value)
+
+                if alpha >= beta:
+                    break
+
+            return column, value
 
 
 
