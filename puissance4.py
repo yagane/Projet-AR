@@ -12,6 +12,29 @@ import matplotlib.pyplot as plt
 
 class Puissance4(Tk):
 
+
+
+    def __init__(self):
+        Tk.__init__(self)
+        self.tab = []
+        self.win = 0
+        self.loose = 0
+        self.column = 7
+        self.line = 6
+        self.width = 700
+        self.height = 600
+        self.player = 1
+        self.board = np.zeros((self.line, self.column))
+        self.canvas = Canvas(self, width=self.width, height=self.height, background='blue')
+        self.canvas.bind('<Button-1>', self.callback)
+        self.canvas.pack()
+
+    def restart(self):
+        self.player = 1
+        self.board = np.zeros((self.line, self.column))
+        self.canvas.delete("all")
+        self.print_board()
+
     def callback(self, event):
         x = event.x
         x = int(x * self.column / self.width)
@@ -20,7 +43,7 @@ class Puissance4(Tk):
         if self.check_win(self.board) != -1:
             self.restart()
         else:
-            x = self.minmax(self.board,5,-math.inf,math.inf,True)[0]
+            x, score = self.minmax(self.board, 5, -math.inf, math.inf, True)
             self.play(x)
 
             if self.check_win(self.board) != -1:
@@ -54,38 +77,6 @@ class Puissance4(Tk):
         else:
             self.IA_vs_rand()
 
-    def motion(self, event):
-        print("Mouse position: (%s %s)" % (event.x, event.y))
-
-    def __init__(self):
-        Tk.__init__(self)
-        self.tab = []
-        self.win = 0
-        self.loose = 0
-        self.column = 7
-        self.line = 6
-        self.width = 700
-        self.height = 600
-        self.player = 1
-        self.board = None
-        self.canvas = None
-        self.reset()
-        #Permet de resize les éléments quand on change la taille de la fenêtre
-        #self.frame.pack()
-        self.canvas.bind('<Button-1>', self.callback)
-        self.canvas.pack()
-
-    def reset(self):
-        self.board = np.zeros((self.line, self.column))
-        #self.frame = Frame(self, width=self.width, height=self.height)
-        self.canvas = Canvas(self, width=self.width, height=self.height, background='blue')
-
-    def restart(self):
-        self.player = 1
-        self.board = np.zeros((self.line, self.column))
-        self.canvas.delete("all")
-        self.print_board()
-
     def possibles_plays(self, board):
         plays = []
         for i in range(self.column):
@@ -102,7 +93,7 @@ class Puissance4(Tk):
         if self.possibles_plays(self.board)[x] == -1:
             print("Ce coup n'est pas possible, rejouez !")
         else:
-            self.board[self.possibles_plays(self.board)[x], x] = self.player
+            self.drop_piece(self.board,self.possibles_plays(self.board)[x], x, self.player)
 
             self.check_win(self.board)
 
@@ -171,8 +162,57 @@ class Puissance4(Tk):
         #self.frame.update()
         self.canvas.update()
 
-    def drop_piece(self, board, row, col, piece):
-        board[row][col] = piece
+    def drop_piece(self, board, row, col, player):
+        board[row][col] = player
+
+    def score_board(self, board, player):
+        score = 0
+
+        center_array = [int(i) for i in list(board[:, self.column//2])]
+        center_count = center_array.count(player)
+        score += center_count * 3
+
+        for r in range(self.line):
+            row_array = [int(i) for i in list(board[r, :])]
+            for c in range(self.column - 3):
+                array = row_array[c:c + 4]
+                score += self.evaluate(array, player)
+
+        for c in range(self.column):
+            col_array = [int(i) for i in list(board[:, c])]
+            for r in range(self.line - 3):
+                array = col_array[r:r + 4]
+                score += self.evaluate(array, player)
+
+        for r in range(self.line - 3):
+            for c in range(self.column - 3):
+                array = [board[r + i][c + i] for i in range(4)]
+                score += self.evaluate(array, player)
+
+        for r in range(self.line - 3):
+            for c in range(self.column - 3):
+                array = [board[r + 3 - i][c + i] for i in range(4)]
+                score += self.evaluate(array, player)
+
+        return score
+
+    def evaluate(self, array, player):
+        score = 0
+        opponent = 1
+        if player == 1:
+            opponent = 2
+
+        if array.count(player) == 4:
+            score += 100
+        elif array.count(player) == 3 and array.count(0) == 1:
+            score += 5
+        elif array.count(player) == 2 and array.count(0) == 2:
+            score += 2
+
+        if array.count(opponent) == 3 and array.count(0) == 1:
+            score -= 4
+
+        return score
 
     def minmax(self, board, depth, alpha, beta, flag_max):
         possible_play = self.possibles_plays(board)
@@ -185,14 +225,15 @@ class Puissance4(Tk):
         win = self.check_win(board)
 
         if depth == 0 or win != -1:
+
             if win == 2:
-                return (None, 100000000000000)
+                return None, 1000000
             elif win == 1:
-                return (None, -10000000000000)
+                return None, -100000
             elif win == 0:
-                return (None, -1)
+                return None, 0
             else:
-                return (None, 0)
+                return None, self.score_board(board, self.player)
 
         if flag_max:
             value = -math.inf
@@ -202,11 +243,12 @@ class Puissance4(Tk):
                 row = possible_play[col]
                 b_copy = self.board.copy()
 
-                self.drop_piece(b_copy, row, col, 2)
-                new_score = self.minmax(b_copy, depth-1, alpha, beta, False)[1]
+                self.drop_piece(b_copy, row, col, self.player)
 
-                if new_score > value:
-                    value = new_score
+                score = self.minmax(b_copy, depth-1, alpha, beta, False)[1]
+
+                if score > value:
+                    value = score
                     column = col
 
                 alpha = max(alpha, value)
@@ -223,11 +265,17 @@ class Puissance4(Tk):
             for col in valid_col:
                 row = possible_play[col]
                 b_copy = self.board.copy()
-                self.drop_piece(b_copy, row, col, 1)
-                new_score = self.minmax(b_copy, depth-1,alpha, beta, True)[1]
 
-                if new_score < value:
-                    value = new_score
+                if self.player == 1:
+                    player = 2
+                else:
+                    player = 1
+
+                self.drop_piece(b_copy, row, col, player)
+                score = self.minmax(b_copy, depth-1, alpha, beta, True)[1]
+
+                if score < value:
+                    value = score
                     column = col
 
                 beta = min(beta, value)
