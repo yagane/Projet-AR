@@ -10,6 +10,7 @@ import math
 import random
 import matplotlib.pyplot as plt
 
+
 class Puissance4(Tk):
 
 
@@ -27,6 +28,8 @@ class Puissance4(Tk):
         self.board = np.zeros((self.line, self.column))
         self.canvas = Canvas(self, width=self.width, height=self.height, background='blue')
         self.canvas.bind('<Button-1>', self.callback)
+        #self.IA_vs_IA()
+        #self.IA_vs_Rand()
         self.canvas.pack()
 
     def restart(self):
@@ -49,7 +52,7 @@ class Puissance4(Tk):
             if self.check_win(self.board) != -1:
                 self.restart()
 
-    def IA_vs_rand(self):
+    def IA_vs_IA(self):
         if self.player == 1:
             x = self.minmax(self.board, 5, -math.inf, math.inf, True)[0]
             self.play(x)
@@ -75,7 +78,35 @@ class Puissance4(Tk):
             plt.plot(t,self.tab)
             plt.show()
         else:
-            self.IA_vs_rand()
+            self.IA_vs_IA()
+
+    def IA_vs_Rand(self):
+            if self.player == 1:
+                x = self.minmax(self.board, 5, -math.inf, math.inf, True)[0]
+                self.play(x)
+
+            if self.check_win(self.board) != -1:
+                self.restart()
+                self.loose += 1
+                print("Win: ", self.win, ", Loose: ", self.loose)
+                self.tab.append(-1)
+            else:
+                if self.player == 2:
+                    x = np.randint(0,6)
+                    self.play(x)
+
+                    if self.check_win(self.board) != -1:
+                        self.restart()
+                        self.win += 1
+                        print("Win: ", self.win, ", Loose: ", self.loose)
+                        self.tab.append(1)
+
+            if len(self.tab) == 100:
+                t = np.linspace(0, 100, 100)
+                plt.plot(t, self.tab)
+                plt.show()
+            else:
+                self.IA_vs_Rand()
 
     def possibles_plays(self, board):
         plays = []
@@ -284,7 +315,6 @@ class Puissance4(Tk):
                     break
 
             return column, value
-
 
 
 
